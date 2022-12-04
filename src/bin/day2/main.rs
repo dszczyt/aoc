@@ -10,9 +10,9 @@ enum Choice {
 impl From<&str> for Choice {
     fn from(input: &str) -> Self {
         match input {
-            "A" | "X" => Self::Rock,
-            "B" | "Y" => Self::Paper,
-            "C" | "Z" => Self::Scissor,
+            "A" => Self::Rock,
+            "B" => Self::Paper,
+            "C" => Self::Scissor,
             _ => unreachable!(),
         }
     }
@@ -30,31 +30,33 @@ impl From<Choice> for Score {
 
 #[derive(Clone, Copy, Debug)]
 struct Round {
-    pub my_choice: Choice,
+    // pub my_choice: Choice,
     pub opponent_choice: Choice,
+    pub expected_result: RoundResult,
 }
 
 impl From<&str> for Round {
     fn from(input: &str) -> Self {
-        let choices: Vec<Choice> = input.split(' ').map(|input| input.into()).collect();
+        let split_input: Vec<&str> = input.split(' ').collect();
         Self {
-            my_choice: choices.get(1).unwrap().clone(),
-            opponent_choice: choices.get(0).unwrap().clone(),
+            expected_result: split_input.get(1).unwrap().clone().into(),
+            opponent_choice: split_input.get(0).unwrap().clone().into(),
         }
     }
 }
 
 impl Round {
     pub fn score(self) -> Score {
-        let result: RoundResult = self.into();
-        let result_score: Score = result.into();
-        let my_choice_score: Score = self.my_choice.into();
+        let my_choice: Choice = self.into();
+        // let result: RoundResult = self.into();
+        let result_score: Score = my_choice.into();
+        let expected_result: Score = self.expected_result.into();
 
-        result_score + my_choice_score
+        result_score + expected_result
     }
 }
 
-#[derive(Debug)]
+#[derive(Clone, Copy, Debug)]
 enum RoundResult {
     Win,
     Draw,
@@ -71,20 +73,29 @@ impl From<RoundResult> for Score {
     }
 }
 
-impl From<Round> for RoundResult {
-    fn from(round: Round) -> Self {
-        if round.opponent_choice == round.my_choice {
-            return Self::Draw;
-        }
-
-        match (round.opponent_choice, round.my_choice) {
-            (Choice::Rock, Choice::Paper) => Self::Win,
-            (Choice::Rock, Choice::Scissor) => Self::Defeat,
-            (Choice::Paper, Choice::Rock) => Self::Defeat,
-            (Choice::Paper, Choice::Scissor) => Self::Win,
-            (Choice::Scissor, Choice::Rock) => Self::Win,
-            (Choice::Scissor, Choice::Paper) => Self::Defeat,
+impl From<&str> for RoundResult {
+    fn from(input: &str) -> Self {
+        match input {
+            "X" => Self::Defeat,
+            "Y" => Self::Draw,
+            "Z" => Self::Win,
             _ => unreachable!(),
+        }
+    }
+}
+
+impl From<Round> for Choice {
+    fn from(round: Round) -> Self {
+        match (round.opponent_choice, round.expected_result) {
+            (Choice::Rock, RoundResult::Win) => Self::Paper,
+            (Choice::Rock, RoundResult::Draw) => Self::Rock,
+            (Choice::Rock, RoundResult::Defeat) => Self::Scissor,
+            (Choice::Paper, RoundResult::Win) => Self::Scissor,
+            (Choice::Paper, RoundResult::Draw) => Self::Paper,
+            (Choice::Paper, RoundResult::Defeat) => Self::Rock,
+            (Choice::Scissor, RoundResult::Win) => Self::Rock,
+            (Choice::Scissor, RoundResult::Draw) => Self::Scissor,
+            (Choice::Scissor, RoundResult::Defeat) => Self::Paper,
         }
     }
 }
@@ -109,13 +120,13 @@ impl From<&str> for StrategyGuide {
 
 #[cfg(test)]
 mod test {
-    use crate::{Score, StrategyGuide};
+    use crate::StrategyGuide;
 
     #[test]
     fn example() {
         let example = include_str!("example");
         let strategy_guide: StrategyGuide = example.into();
-        assert_eq!(strategy_guide.score(), 15 as Score)
+        assert_eq!(strategy_guide.score(), 12)
     }
 }
 
