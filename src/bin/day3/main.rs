@@ -184,7 +184,7 @@ mod test {
 
     #[test]
     fn test_rucksacks_priority() {
-        let rucksacks: Rucksacks = "vJrwpWtwJgWrhcsFMMfFFhFp\njqHRNqRjqzjGDLGLrsFMfFZSrLrFZsSL\nPmmdzqPrVvPwwTWBwg\nwMqvLMZHhHMvwLHjbvcjnnSBnvTQFn\nttgJtRGJQctTZtZT\nCrZsJsPPZsGzwwsLwLmpwMDw".into();
+        let rucksacks: Rucksacks = include_str!("example").into();
         assert_eq!(rucksacks.sum_priorities(), 157);
     }
 }
