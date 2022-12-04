@@ -1,3 +1,5 @@
+use std::ops::{Range, RangeInclusive};
+
 #[derive(Clone, Debug)]
 pub struct Section {
     pub from: usize,
@@ -14,6 +16,12 @@ impl From<&str> for Section {
             from: values.get(0).unwrap().clone(),
             to: values.get(1).unwrap().clone(),
         }
+    }
+}
+
+impl Section {
+    pub fn range(&self) -> RangeInclusive<usize> {
+        RangeInclusive::new(self.from, self.to)
     }
 }
 
@@ -38,6 +46,13 @@ impl Pair {
         (self.first.from >= self.second.from && self.first.to <= self.second.to)
             || (self.second.from >= self.first.from && self.second.to <= self.first.to)
     }
+
+    pub fn partially_overlaps(&self) -> bool {
+        self.first.range().contains(&self.second.from)
+            || self.first.range().contains(&self.second.to)
+            || self.second.range().contains(&self.first.from)
+            || self.second.range().contains(&self.first.to)
+    }
 }
 
 pub fn count_overlaping_pairs(input: &str) -> usize {
@@ -48,9 +63,17 @@ pub fn count_overlaping_pairs(input: &str) -> usize {
         .count()
 }
 
+pub fn count_partially_overlaping_pairs(input: &str) -> usize {
+    input
+        .lines()
+        .map(|line| Into::<Pair>::into(line))
+        .filter(|pair| pair.partially_overlaps())
+        .count()
+}
+
 #[cfg(test)]
 mod test {
-    use crate::{count_overlaping_pairs, Pair, Section};
+    use crate::{count_overlaping_pairs, count_partially_overlaping_pairs, Pair, Section};
 
     #[test]
     fn test_section() {
@@ -99,12 +122,47 @@ mod test {
     }
 
     #[test]
+    fn test_pair_partially_overlaps_1() {
+        assert!(!Into::<Pair>::into("2-4,6-8").partially_overlaps());
+    }
+
+    #[test]
+    fn test_pair_partially_overlaps_2() {
+        assert!(!Into::<Pair>::into("2-3,4-5").partially_overlaps());
+    }
+
+    #[test]
+    fn test_pair_partially_overlaps_3() {
+        assert!(Into::<Pair>::into("5-7,7-9").partially_overlaps());
+    }
+
+    #[test]
+    fn test_pair_partially_overlaps_4() {
+        assert!(Into::<Pair>::into("2-8,3-7").partially_overlaps());
+    }
+
+    #[test]
+    fn test_pair_partially_overlaps_5() {
+        assert!(Into::<Pair>::into("6-6,4-6").partially_overlaps());
+    }
+
+    #[test]
+    fn test_pair_partially_overlaps_6() {
+        assert!(Into::<Pair>::into("2-6,4-8").partially_overlaps());
+    }
+
+    #[test]
     fn example_part1() {
         assert_eq!(count_overlaping_pairs(include_str!("example")), 2);
+    }
+
+    #[test]
+    fn example_part2() {
+        assert_eq!(count_partially_overlaping_pairs(include_str!("example")), 4);
     }
 }
 
 fn main() {
     let input = include_str!("input");
-    dbg!(count_overlaping_pairs(input));
+    dbg!(count_partially_overlaping_pairs(input));
 }
