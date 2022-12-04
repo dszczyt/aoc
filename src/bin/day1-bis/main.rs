@@ -32,6 +32,7 @@ fn max_sum_of_three_best_grouped_lines(lines: Lines) -> Option<usize> {
     Some(vals.iter().rev().take(3).copied().sum())
 }
 
+/*
 #[cfg(test)]
 mod test {
     use std::str::Lines;
@@ -66,6 +67,7 @@ mod test {
         )
     }
 }
+*/
 
 fn main() {
     let input = include_str!("input");
