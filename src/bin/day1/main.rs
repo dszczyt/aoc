@@ -26,8 +26,6 @@ fn max_sum_of_grouped_lines(lines: Lines) -> Option<usize> {
 
 #[cfg(test)]
 mod test {
-    use std::str::Lines;
-
     use crate::max_sum_of_grouped_lines;
 
     #[test]
