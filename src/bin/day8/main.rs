@@ -53,6 +53,26 @@ impl Tree {
             || self.is_visible_from(Direction::Left, map)
             || self.is_visible_from(Direction::Right, map)
     }
+
+    pub fn viewing_distance_to(&self, direction: Direction, map: &Map) -> usize {
+        let trees = self.trees_to_the_edge(direction, map);
+        let visible_trees: Vec<&&Tree> = trees
+            .iter()
+            .take_while(|tree| tree.height < self.height)
+            .collect();
+        if trees.len() > visible_trees.len() {
+            visible_trees.len() + 1
+        } else {
+            visible_trees.len()
+        }
+    }
+
+    pub fn scenic_score(&self, map: &Map) -> usize {
+        self.viewing_distance_to(Direction::Top, map)
+            * self.viewing_distance_to(Direction::Left, map)
+            * self.viewing_distance_to(Direction::Bottom, map)
+            * self.viewing_distance_to(Direction::Right, map)
+    }
 }
 
 #[derive(Debug)]
@@ -126,11 +146,22 @@ impl Map {
             .flatten()
             .collect()
     }
+
+    pub fn highest_scenic_score(&self) -> usize {
+        self.rows
+            .iter()
+            .map(|row| row.trees.iter().map(|tree| tree.scenic_score(&self)))
+            .flatten()
+            .max()
+            .unwrap()
+    }
 }
 
 fn main() {
     let map: Map = include_str!("input").into();
     dbg!(map.visible_trees().len());
+
+    dbg!(map.highest_scenic_score());
 }
 
 #[cfg(test)]
@@ -140,7 +171,6 @@ mod test {
     #[test]
     fn part1_1() {
         let map: Map = include_str!("example").into();
-        dbg!(&map);
 
         // The top-left 5 is visible from the left
         assert!(map
@@ -246,5 +276,34 @@ mod test {
     fn part1_9() {
         let map: Map = include_str!("example").into();
         assert_eq!(map.visible_trees().len(), 21);
+    }
+
+    #[test]
+    fn part2_1() {
+        let map: Map = include_str!("example").into();
+
+        let tree = map.get_tree(2, 1, None).unwrap();
+
+        assert_eq!(tree.viewing_distance_to(Direction::Top, &map), 1);
+        assert_eq!(tree.viewing_distance_to(Direction::Left, &map), 1);
+        assert_eq!(tree.viewing_distance_to(Direction::Right, &map), 2);
+        assert_eq!(tree.viewing_distance_to(Direction::Bottom, &map), 2);
+
+        assert_eq!(tree.scenic_score(&map), 4);
+    }
+
+    #[test]
+    fn part2_2() {
+        let map: Map = include_str!("example").into();
+
+        let tree = map.get_tree(2, 3, None).unwrap();
+
+        assert_eq!(tree.viewing_distance_to(Direction::Top, &map), 2);
+        assert_eq!(tree.viewing_distance_to(Direction::Left, &map), 2);
+        assert_eq!(tree.viewing_distance_to(Direction::Bottom, &map), 1);
+        assert_eq!(tree.viewing_distance_to(Direction::Right, &map), 2);
+
+        assert_eq!(tree.scenic_score(&map), 8);
+        assert_eq!(map.highest_scenic_score(), 8);
     }
 }
