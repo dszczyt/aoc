@@ -32,38 +32,40 @@ impl Move {
     }
 
     pub fn single_apply(&self, board: &mut Board) {
+        let rope_len = board.rope.len();
         match self.dir {
-            Dir::Right => board.current_head.x += 1,
-            Dir::Up => board.current_head.y += 1,
-            Dir::Left => board.current_head.x -= 1,
-            Dir::Down => board.current_head.y -= 1,
+            Dir::Right => board.rope.get_mut(rope_len - 1).unwrap().x += 1,
+            Dir::Up => board.rope.get_mut(rope_len - 1).unwrap().y += 1,
+            Dir::Left => board.rope.get_mut(rope_len - 1).unwrap().x -= 1,
+            Dir::Down => board.rope.get_mut(rope_len - 1).unwrap().y -= 1,
         }
 
-        if board.current_tail.x < board.current_head.x - 1 {
-            board.current_tail.x += 1;
-            if board.current_tail.y != board.current_head.y {
-                board.current_tail.y = board.current_head.y;
+        (1..rope_len).rev().for_each(|i| {
+            if board.rope.get(i - 1).unwrap().x < board.rope.get(i).unwrap().x - 1 {
+                board.rope.get_mut(i - 1).unwrap().x += 1;
+                if board.rope.get(i - 1).unwrap().y != board.rope.get(i).unwrap().y {
+                    board.rope.get_mut(i - 1).unwrap().y = board.rope.get(i).unwrap().y;
+                }
+            } else if board.rope.get(i - 1).unwrap().x > board.rope.get(i).unwrap().x + 1 {
+                board.rope.get_mut(i - 1).unwrap().x -= 1;
+                if board.rope.get(i - 1).unwrap().y != board.rope.get(i).unwrap().y {
+                    board.rope.get_mut(i - 1).unwrap().y = board.rope.get(i).unwrap().y;
+                }
             }
-        } else if board.current_tail.x > board.current_head.x + 1 {
-            board.current_tail.x -= 1;
-            if board.current_tail.y != board.current_head.y {
-                board.current_tail.y = board.current_head.y;
-            }
-        }
 
-        if board.current_tail.y < board.current_head.y - 1 {
-            board.current_tail.y += 1;
-            if board.current_tail.x != board.current_head.x {
-                board.current_tail.x = board.current_head.x;
+            if board.rope.get(i - 1).unwrap().y < board.rope.get(i).unwrap().y - 1 {
+                board.rope.get_mut(i - 1).unwrap().y += 1;
+                if board.rope.get(i - 1).unwrap().x != board.rope.get(i).unwrap().x {
+                    board.rope.get_mut(i - 1).unwrap().x = board.rope.get(i).unwrap().x;
+                }
+            } else if board.rope.get(i - 1).unwrap().y > board.rope.get(i).unwrap().y + 1 {
+                board.rope.get_mut(i - 1).unwrap().y -= 1;
+                if board.rope.get(i - 1).unwrap().x != board.rope.get(i).unwrap().x {
+                    board.rope.get_mut(i - 1).unwrap().x = board.rope.get(i).unwrap().x;
+                }
             }
-        } else if board.current_tail.y > board.current_head.y + 1 {
-            board.current_tail.y -= 1;
-            if board.current_tail.x != board.current_head.x {
-                board.current_tail.x = board.current_head.x;
-            }
-        }
+        });
 
-        board.create_head_square_if_needed();
         board.create_tail_square_if_needed();
     }
 }
@@ -94,15 +96,14 @@ pub struct Coord {
 #[derive(Default, Debug)]
 pub struct Board {
     pub squares: Vec<Rc<RefCell<Square>>>,
-    pub current_head: Coord,
-    pub current_tail: Coord,
+    pub rope: Vec<Coord>,
 }
 
 impl Board {
-    pub fn new() -> Board {
+    pub fn new(length: usize) -> Board {
         Board {
             squares: vec![Rc::new(RefCell::new(Square::default()))],
-            ..Default::default()
+            rope: (0..length).map(|_| Coord::default()).collect(),
         }
     }
 
@@ -121,13 +122,9 @@ impl Board {
         }
     }
 
-    pub fn create_head_square_if_needed(&mut self) {
-        self.create_square_if_needed(self.current_head.x, self.current_head.y);
-    }
-
     pub fn create_tail_square_if_needed(&mut self) {
-        self.create_square_if_needed(self.current_tail.x, self.current_tail.y);
-        self.get_square(self.current_tail.x, self.current_tail.y)
+        self.create_square_if_needed(self.rope.get(0).unwrap().x, self.rope.get(0).unwrap().y);
+        self.get_square(self.rope.get(0).unwrap().x, self.rope.get(0).unwrap().y)
             .unwrap()
             .borrow_mut()
             .visited = true;
@@ -140,12 +137,12 @@ impl Board {
     }
 
     pub fn get_head(&self) -> &Rc<RefCell<Square>> {
-        self.get_square(self.current_head.x, self.current_head.y)
+        self.get_square(self.rope.get(1).unwrap().x, self.rope.get(1).unwrap().y)
             .unwrap()
     }
 
     pub fn get_tail(&self) -> &Rc<RefCell<Square>> {
-        self.get_square(self.current_tail.x, self.current_tail.y)
+        self.get_square(self.rope.get(0).unwrap().x, self.rope.get(0).unwrap().y)
             .unwrap()
     }
 
@@ -164,20 +161,32 @@ pub fn walk(input: &str, board: &mut Board) {
 
 fn main() {
     let input = include_str!("input");
-    let mut board = Board::new();
+    let mut board = Board::new(2);
+    walk(input, &mut board);
+    dbg!(board.visited_squares().len());
+
+    let mut board = Board::new(10);
     walk(input, &mut board);
     dbg!(board.visited_squares().len());
 }
 
 #[cfg(test)]
 mod test {
-    use crate::{walk, Board, Square};
+    use crate::{walk, Board};
 
     #[test]
     fn part1() {
         let input = include_str!("example");
-        let mut board = Board::new();
+        let mut board = Board::new(2);
         walk(input, &mut board);
         assert_eq!(board.visited_squares().len(), 13);
+    }
+
+    #[test]
+    fn part2() {
+        let input = include_str!("example_part2");
+        let mut board = Board::new(10);
+        walk(input, &mut board);
+        assert_eq!(board.visited_squares().len(), 36);
     }
 }
