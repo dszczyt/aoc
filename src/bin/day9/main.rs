@@ -33,33 +33,33 @@ impl Move {
 
     pub fn single_apply(&self, board: &mut Board) {
         match self.dir {
-            Dir::Right => board.current_head_x += 1,
-            Dir::Up => board.current_head_y += 1,
-            Dir::Left => board.current_head_x -= 1,
-            Dir::Down => board.current_head_y -= 1,
+            Dir::Right => board.current_head.x += 1,
+            Dir::Up => board.current_head.y += 1,
+            Dir::Left => board.current_head.x -= 1,
+            Dir::Down => board.current_head.y -= 1,
         }
 
-        if board.current_tail_x < board.current_head_x - 1 {
-            board.current_tail_x += 1;
-            if board.current_tail_y != board.current_head_y {
-                board.current_tail_y = board.current_head_y;
+        if board.current_tail.x < board.current_head.x - 1 {
+            board.current_tail.x += 1;
+            if board.current_tail.y != board.current_head.y {
+                board.current_tail.y = board.current_head.y;
             }
-        } else if board.current_tail_x > board.current_head_x + 1 {
-            board.current_tail_x -= 1;
-            if board.current_tail_y != board.current_head_y {
-                board.current_tail_y = board.current_head_y;
+        } else if board.current_tail.x > board.current_head.x + 1 {
+            board.current_tail.x -= 1;
+            if board.current_tail.y != board.current_head.y {
+                board.current_tail.y = board.current_head.y;
             }
         }
 
-        if board.current_tail_y < board.current_head_y - 1 {
-            board.current_tail_y += 1;
-            if board.current_tail_x != board.current_head_x {
-                board.current_tail_x = board.current_head_x;
+        if board.current_tail.y < board.current_head.y - 1 {
+            board.current_tail.y += 1;
+            if board.current_tail.x != board.current_head.x {
+                board.current_tail.x = board.current_head.x;
             }
-        } else if board.current_tail_y > board.current_head_y + 1 {
-            board.current_tail_y -= 1;
-            if board.current_tail_x != board.current_head_x {
-                board.current_tail_x = board.current_head_x;
+        } else if board.current_tail.y > board.current_head.y + 1 {
+            board.current_tail.y -= 1;
+            if board.current_tail.x != board.current_head.x {
+                board.current_tail.x = board.current_head.x;
             }
         }
 
@@ -82,16 +82,20 @@ impl From<&str> for Move {
 pub struct Square {
     pub x: isize,
     pub y: isize,
-    pub visited: usize,
+    pub visited: bool,
+}
+
+#[derive(Debug, Default)]
+pub struct Coord {
+    pub x: isize,
+    pub y: isize,
 }
 
 #[derive(Default, Debug)]
 pub struct Board {
     pub squares: Vec<Rc<RefCell<Square>>>,
-    pub current_head_x: isize,
-    pub current_head_y: isize,
-    pub current_tail_x: isize,
-    pub current_tail_y: isize,
+    pub current_head: Coord,
+    pub current_tail: Coord,
 }
 
 impl Board {
@@ -118,15 +122,15 @@ impl Board {
     }
 
     pub fn create_head_square_if_needed(&mut self) {
-        self.create_square_if_needed(self.current_head_x, self.current_head_y);
+        self.create_square_if_needed(self.current_head.x, self.current_head.y);
     }
 
     pub fn create_tail_square_if_needed(&mut self) {
-        self.create_square_if_needed(self.current_tail_x, self.current_tail_y);
-        self.get_square(self.current_tail_x, self.current_tail_y)
+        self.create_square_if_needed(self.current_tail.x, self.current_tail.y);
+        self.get_square(self.current_tail.x, self.current_tail.y)
             .unwrap()
             .borrow_mut()
-            .visited += 1;
+            .visited = true;
     }
 
     pub fn get_square(&self, x: isize, y: isize) -> Option<&Rc<RefCell<Square>>> {
@@ -136,19 +140,19 @@ impl Board {
     }
 
     pub fn get_head(&self) -> &Rc<RefCell<Square>> {
-        self.get_square(self.current_head_x, self.current_head_y)
+        self.get_square(self.current_head.x, self.current_head.y)
             .unwrap()
     }
 
     pub fn get_tail(&self) -> &Rc<RefCell<Square>> {
-        self.get_square(self.current_tail_x, self.current_tail_y)
+        self.get_square(self.current_tail.x, self.current_tail.y)
             .unwrap()
     }
 
     pub fn visited_squares(&self) -> Vec<&Rc<RefCell<Square>>> {
         self.squares
             .iter()
-            .filter(|square| square.borrow().visited > 0)
+            .filter(|square| square.borrow().visited)
             .collect()
     }
 }
