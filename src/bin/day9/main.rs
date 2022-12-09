@@ -20,20 +20,10 @@ impl From<&str> for Dir {
     }
 }
 
-#[derive(Debug)]
-pub struct Move {
-    pub dir: Dir,
-    pub length: usize,
-}
-
-impl Move {
+impl Dir {
     pub fn apply(&self, board: &mut Board) {
-        (0..self.length).for_each(|_| self.single_apply(board));
-    }
-
-    pub fn single_apply(&self, board: &mut Board) {
         let rope_len = board.rope.len();
-        match self.dir {
+        match self {
             Dir::Right => board.rope.get_mut(rope_len - 1).unwrap().x += 1,
             Dir::Up => board.rope.get_mut(rope_len - 1).unwrap().y += 1,
             Dir::Left => board.rope.get_mut(rope_len - 1).unwrap().x -= 1,
@@ -70,6 +60,18 @@ impl Move {
     }
 }
 
+#[derive(Debug)]
+pub struct Move {
+    pub dir: Dir,
+    pub length: usize,
+}
+
+impl Move {
+    pub fn apply(&self, board: &mut Board) {
+        (0..self.length).for_each(|_| self.dir.apply(board));
+    }
+}
+
 impl From<&str> for Move {
     fn from(input: &str) -> Self {
         let (dir, length) = input.split_once(" ").unwrap();
@@ -87,7 +89,7 @@ pub struct Square {
     pub visited: bool,
 }
 
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Clone)]
 pub struct Coord {
     pub x: isize,
     pub y: isize,
