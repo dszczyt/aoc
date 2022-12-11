@@ -2,13 +2,13 @@ use std::{cell::RefCell, fmt::Debug, rc::Rc};
 
 #[derive(Debug, Clone)]
 pub(crate) struct Item {
-    pub value: i64,
+    pub value: u64,
 }
 
 impl Item {
-    pub(crate) fn inspect(&mut self, monkey: &Monkey, worry_level: i64) -> usize {
+    pub(crate) fn inspect(&mut self, monkey: &Monkey, worry_levels_divider: u64) -> usize {
         self.value = monkey.operation.run(&self.value);
-        self.value /= worry_level;
+        self.value /= worry_levels_divider;
         if self.value % monkey.test_divisible_by == 0 {
             monkey.if_true_throw_to
         } else {
@@ -25,12 +25,12 @@ pub enum OperationType {
 
 #[derive(Debug, Clone)]
 pub(crate) struct Operation {
-    pub value: Option<i64>,
+    pub value: Option<u64>,
     pub operation_type: OperationType,
 }
 
 impl Operation {
-    fn run(&self, old: &i64) -> i64 {
+    fn run(&self, old: &u64) -> u64 {
         match self.operation_type {
             OperationType::Add => old + self.value.unwrap_or(*old),
             OperationType::Mul => old * self.value.unwrap_or(*old),
@@ -43,7 +43,7 @@ pub(crate) struct Monkey {
     pub items: Vec<Item>,
     pub activity: usize,
     pub operation: Operation,
-    pub test_divisible_by: i64,
+    pub test_divisible_by: u64,
     pub if_true_throw_to: usize,
     pub if_false_throw_to: usize,
 }
@@ -78,7 +78,7 @@ impl From<&str> for Monkeys {
                     .unwrap()
                     .split(",")
                     .map(|s| Item {
-                        value: i64::from_str_radix(s.trim(), 10).unwrap(),
+                        value: u64::from_str_radix(s.trim(), 10).unwrap(),
                     })
                     .collect();
 
@@ -90,7 +90,7 @@ impl From<&str> for Monkeys {
                     operation_type = OperationType::Mul;
                 }
                 let operation = Operation {
-                    value: i64::from_str_radix(operation_parts.get(0).unwrap(), 10)
+                    value: u64::from_str_radix(operation_parts.get(0).unwrap(), 10)
                         .map_or(None, |op| Some(op)),
                     operation_type,
                 };
@@ -99,7 +99,7 @@ impl From<&str> for Monkeys {
                     items,
                     activity: 0,
                     operation,
-                    test_divisible_by: i64::from_str_radix(
+                    test_divisible_by: u64::from_str_radix(
                         lines
                             .get(3)
                             .unwrap()
@@ -144,19 +144,23 @@ impl From<&str> for Monkeys {
 }
 
 impl Monkeys {
-    pub(crate) fn round(&mut self, worry_level: i64) {
+    pub(crate) fn round(&mut self, worry_levels_divider: u64) {
+        let mut multipliers: Vec<u64> = self
+            .monkeys
+            .iter()
+            .map(|monkey| monkey.borrow().test_divisible_by)
+            .collect();
+        multipliers.dedup();
+        let ppcm = multipliers.iter().fold(1, |acc, n| acc * n);
         self.monkeys.iter().for_each(|monkey| {
             let monkey = &mut monkey.borrow_mut();
             monkey.items.iter().for_each(|item| {
                 let mut item = item.clone();
-                let target_monkey = item.inspect(monkey, worry_level);
-                dbg!(&item, &target_monkey);
-                self.monkeys
-                    .get(target_monkey)
-                    .unwrap()
-                    .borrow_mut()
-                    .items
-                    .push(item);
+                let target_monkey = item.inspect(monkey, worry_levels_divider);
+                let mut target_monkey = self.monkeys.get(target_monkey).unwrap().borrow_mut();
+
+                item.value = item.value % ppcm;
+                target_monkey.items.push(item);
             });
             monkey.activity += monkey.items.len();
             monkey.items = vec![];
@@ -184,6 +188,13 @@ pub(crate) fn main() {
     dbg!(&monkeys);
 
     dbg!(monkeys.business());
+
+    let mut monkeys: Monkeys = input.into();
+    (0..10000).for_each(|_| {
+        monkeys.round(1);
+    });
+
+    dbg!(monkeys.business());
 }
 
 #[cfg(test)]
@@ -200,5 +211,16 @@ mod test {
         dbg!(&monkeys);
 
         assert_eq!(monkeys.business(), 10605);
+    }
+
+    #[test]
+    fn test_part2() {
+        let input = include_str!("ex_part1");
+        let mut monkeys: Monkeys = input.into();
+        (0..10000).for_each(|_| {
+            monkeys.round(1);
+        });
+
+        assert_eq!(monkeys.business(), 2713310158);
     }
 }

@@ -23,10 +23,10 @@ impl From<&str> for Dir {
 impl From<&Dir> for Coord {
     fn from(dir: &Dir) -> Self {
         match dir {
-            Dir::Right => Coord { x: -1, y: 0 },
-            Dir::Up => Coord { x: 0, y: -1 },
-            Dir::Left => Coord { x: 1, y: 0 },
-            Dir::Down => Coord { x: 0, y: 1 },
+            Dir::Right => Coord { x: 1, y: 0 },
+            Dir::Up => Coord { x: 0, y: 1 },
+            Dir::Left => Coord { x: -1, y: 0 },
+            Dir::Down => Coord { x: 0, y: -1 },
         }
     }
 }
