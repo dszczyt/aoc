@@ -66,7 +66,7 @@ impl Default for Noop {
 }
 
 impl Instruction for Noop {
-    fn consume_cycle(&mut self, register: &mut Register) -> usize {
+    fn consume_cycle(&mut self, _register: &mut Register) -> usize {
         self.cycles_left -= 1;
         self.cycles_left
     }
