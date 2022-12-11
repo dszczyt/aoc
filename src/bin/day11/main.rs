@@ -6,9 +6,9 @@ pub(crate) struct Item {
 }
 
 impl Item {
-    pub(crate) fn inspect(&mut self, monkey: &Monkey) -> usize {
+    pub(crate) fn inspect(&mut self, monkey: &Monkey, worry_level: i64) -> usize {
         self.value = monkey.operation.run(&self.value);
-        self.value /= 3;
+        self.value /= worry_level;
         if self.value % monkey.test_divisible_by == 0 {
             monkey.if_true_throw_to
         } else {
@@ -144,12 +144,12 @@ impl From<&str> for Monkeys {
 }
 
 impl Monkeys {
-    pub(crate) fn round(&mut self) {
+    pub(crate) fn round(&mut self, worry_level: i64) {
         self.monkeys.iter().for_each(|monkey| {
             let monkey = &mut monkey.borrow_mut();
             monkey.items.iter().for_each(|item| {
                 let mut item = item.clone();
-                let target_monkey = item.inspect(monkey);
+                let target_monkey = item.inspect(monkey, worry_level);
                 dbg!(&item, &target_monkey);
                 self.monkeys
                     .get(target_monkey)
@@ -179,7 +179,7 @@ pub(crate) fn main() {
     let input = include_str!("input");
     let mut monkeys: Monkeys = input.into();
     (0..20).for_each(|_| {
-        monkeys.round();
+        monkeys.round(3);
     });
     dbg!(&monkeys);
 
@@ -191,11 +191,11 @@ mod test {
     use crate::Monkeys;
 
     #[test]
-    fn test() {
+    fn test_part1() {
         let input = include_str!("ex_part1");
         let mut monkeys: Monkeys = input.into();
         (0..20).for_each(|_| {
-            monkeys.round();
+            monkeys.round(3);
         });
         dbg!(&monkeys);
 
