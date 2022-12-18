@@ -9,48 +9,45 @@ pub enum Token {
     ParenClose,
 }
 
-#[derive(Default, Debug)]
+#[derive(PartialEq, Eq, Default, Debug)]
 pub struct Line {
     pub input: String,
-    pub paren_level: usize,
-    current_char: usize,
-    previous_chars: Vec<usize>,
 }
 
-impl Line {
-    pub fn next_token(&mut self) -> Option<Token> {
-        self.previous_chars.push(self.current_char);
-        match self.input.chars().nth(self.current_char) {
-            Some(',') => {
-                self.current_char += 1;
-                self.next_token()
-            }
-            Some('[') => {
-                self.current_char += 1;
-                Some(Token::ParenOpen)
-            }
-            Some(']') => {
-                self.current_char += 1;
-                Some(Token::ParenClose)
-            }
-            Some(ch @ ('0'..='9')) => {
-                let mut s = ch.to_string();
-                loop {
-                    self.current_char += 1;
-                    match self.input.chars().nth(self.current_char) {
-                        Some(ch @ '0'..='9') => s.push(ch),
-                        _ => break,
-                    }
-                }
-
-                Some(Token::Number(s.parse().unwrap()))
-            }
-            _ => None,
+impl Clone for Line {
+    fn clone(&self) -> Self {
+        Self {
+            input: self.input.clone(),
+            ..Default::default()
         }
     }
+}
 
-    pub fn cancel_token(&mut self) {
-        self.current_char = self.previous_chars.pop().unwrap();
+impl PartialOrd for Line {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        let couple_of_lines = CoupleOfLines {
+            line1: self.clone(),
+            line2: other.clone(),
+        };
+
+        if couple_of_lines.compare() {
+            return Some(Ordering::Less);
+        }
+        return Some(Ordering::Greater);
+    }
+}
+
+impl Ord for Line {
+    fn cmp(&self, other: &Self) -> Ordering {
+        let couple_of_lines = CoupleOfLines {
+            line1: self.clone(),
+            line2: other.clone(),
+        };
+
+        if couple_of_lines.compare() {
+            return Ordering::Less;
+        }
+        return Ordering::Greater;
     }
 }
 
@@ -117,7 +114,7 @@ pub fn compare_values(left: &serde_json::Value, right: &serde_json::Value) -> Op
 }
 
 impl CoupleOfLines {
-    pub fn compare(&mut self) -> bool {
+    pub fn compare(&self) -> bool {
         let line1: serde_json::Value = serde_json::from_str(&self.line1.input).unwrap();
         let line2: serde_json::Value = serde_json::from_str(&self.line2.input).unwrap();
 
@@ -163,6 +160,31 @@ fn main() {
         .sum();
 
     dbg!(&result);
+
+    let mut lines: Vec<Line> = input
+        .lines()
+        .filter(|line| !line.is_empty())
+        .map(|input| input.into())
+        .collect();
+    lines.push("[[2]]".into());
+    lines.push("[[6]]".into());
+    lines.sort();
+    dbg!(&lines);
+
+    let result: Vec<usize> = ["[[2]]", "[[6]]"]
+        .iter()
+        .map(|key| {
+            lines
+                .iter()
+                .enumerate()
+                .find(|(i, line)| &line.input == key)
+                .map(|(i, _)| i + 1)
+                .take()
+                .unwrap()
+        })
+        .collect();
+    dbg!(&result);
+    dbg!((&result.get(0)).unwrap() * (&result.get(1)).unwrap());
 }
 
 #[cfg(test)]
@@ -171,7 +193,7 @@ mod test {
 
     #[test]
     fn test_part1_1() {
-        let mut couple_of_lines = CoupleOfLines {
+        let couple_of_lines = CoupleOfLines {
             line1: "[1,1,3,1,1]".into(),
             line2: "[1,1,5,1,1]".into(),
         };
@@ -180,7 +202,7 @@ mod test {
 
     #[test]
     fn test_part1_2() {
-        let mut couple_of_lines = CoupleOfLines {
+        let couple_of_lines = CoupleOfLines {
             line1: "[[1],[2,3,4]]".into(),
             line2: "[[1],4]".into(),
         };
@@ -189,7 +211,7 @@ mod test {
 
     #[test]
     fn test_part1_3() {
-        let mut couple_of_lines = CoupleOfLines {
+        let couple_of_lines = CoupleOfLines {
             line1: "[9]".into(),
             line2: "[[8,7,6]]".into(),
         };
@@ -198,7 +220,7 @@ mod test {
 
     #[test]
     fn test_part1_4() {
-        let mut couple_of_lines = CoupleOfLines {
+        let couple_of_lines = CoupleOfLines {
             line1: "[[4,4],4,4]".into(),
             line2: "[[4,4],4,4]".into(),
         };
@@ -207,7 +229,7 @@ mod test {
 
     #[test]
     fn test_part1_5() {
-        let mut couple_of_lines = CoupleOfLines {
+        let couple_of_lines = CoupleOfLines {
             line1: "[7,7,7,7]".into(),
             line2: "[7,7,7]".into(),
         };
@@ -216,7 +238,7 @@ mod test {
 
     #[test]
     fn test_part1_6() {
-        let mut couple_of_lines = CoupleOfLines {
+        let couple_of_lines = CoupleOfLines {
             line1: "[]".into(),
             line2: "[3]".into(),
         };
@@ -225,7 +247,7 @@ mod test {
 
     #[test]
     fn test_part1_7() {
-        let mut couple_of_lines = CoupleOfLines {
+        let couple_of_lines = CoupleOfLines {
             line1: "[[[]]]".into(),
             line2: "[[]]".into(),
         };
@@ -234,7 +256,7 @@ mod test {
 
     #[test]
     fn test_part1_8() {
-        let mut couple_of_lines = CoupleOfLines {
+        let couple_of_lines = CoupleOfLines {
             line1: "[1,[2,[3,[4,[5,6,7]]]],8,9]".into(),
             line2: "[1,[2,[3,[4,[5,6,0]]]],8,9]".into(),
         };
