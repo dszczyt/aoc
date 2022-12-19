@@ -82,7 +82,8 @@ impl Report {
             }
         }
         let distance = self.sensor.coord.distance(&self.closest_beacon.coord);
-        // dbg!(&distance);
+        let tmp = (distance - (row - self.sensor.coord.y));
+        dbg!(&distance, &tmp);
         (-distance..=distance)
             .map(|d1| vec![d1, row - self.sensor.coord.y])
             .filter(|x| (x.get(0).unwrap().abs() + x.get(1).unwrap().abs()) <= distance)
