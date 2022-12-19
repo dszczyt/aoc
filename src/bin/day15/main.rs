@@ -82,13 +82,9 @@ impl Report {
             }
         }
         let distance = self.sensor.coord.distance(&self.closest_beacon.coord);
-        let tmp = (distance - (row - self.sensor.coord.y));
-        dbg!(&distance, &tmp);
-        (-distance..=distance)
-            .map(|d1| vec![d1, row - self.sensor.coord.y])
-            .filter(|x| (x.get(0).unwrap().abs() + x.get(1).unwrap().abs()) <= distance)
-            .map(|x| (x.get(0).unwrap().clone(), x.get(1).unwrap().clone()))
-            .map(|v| self.sensor.coord.add(v))
+        let max_x = distance - (row - self.sensor.coord.y).abs();
+        (-max_x..=max_x)
+            .map(|x| self.sensor.coord.add((x, row - self.sensor.coord.y)))
             .for_each(|coord| {
                 if let Some(row) = map.get_mut(&coord.y) {
                     if row.get(&coord.x).is_none() {
