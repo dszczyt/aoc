@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, ops::RangeInclusive};
 
 use lazy_static::lazy_static;
 use regex::Regex;
@@ -36,6 +36,53 @@ pub struct Sensor {
 #[derive(Debug, Clone)]
 pub struct Beacon {
     pub coord: Coord,
+}
+
+#[derive(Debug, Clone)]
+pub struct SignalRange {
+    pub start: isize,
+    pub end: isize,
+}
+
+impl SignalRange {
+    pub fn range(&self) -> RangeInclusive<isize> {
+        self.start..=self.end
+    }
+
+    pub fn contains(&self, item: &isize) -> bool {
+        self.range().contains(item)
+    }
+}
+
+#[derive(Debug, Default)]
+pub struct Row {
+    pub number_of_beacons: usize,
+    pub ranges: Vec<SignalRange>,
+}
+
+impl Row {
+    pub fn add_range(&mut self, other: &SignalRange) {
+        for mut r in &mut self.ranges {
+            if r.contains(&other.start) {
+                r.start = other.start;
+                return;
+            }
+            if r.contains(&other.end) {
+                r.end = other.end;
+                return;
+            }
+            if r.start > other.start && r.end < other.end {
+                r.start = other.start;
+                r.end = other.end;
+                return;
+            }
+
+            if r.start < other.start && r.end > other.end {
+                return;
+            }
+        }
+        self.ranges.push(other.clone());
+    }
 }
 
 #[derive(Debug, Clone)]
