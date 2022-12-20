@@ -1,4 +1,7 @@
-use std::{collections::HashMap, ops::RangeInclusive};
+use std::{
+    collections::{HashMap, HashSet},
+    ops::RangeInclusive,
+};
 
 use lazy_static::lazy_static;
 use regex::Regex;
@@ -56,32 +59,44 @@ impl SignalRange {
 
 #[derive(Debug, Default)]
 pub struct Row {
-    pub number_of_beacons: usize,
+    pub beacons: HashSet<isize>,
     pub ranges: Vec<SignalRange>,
 }
 
 impl Row {
     pub fn add_range(&mut self, other: &SignalRange) {
         for mut r in &mut self.ranges {
-            if r.contains(&other.start) {
+            if r.start <= other.start && r.end >= other.end {
+                return;
+            }
+            if r.start >= other.start && r.end <= other.end {
                 r.start = other.start;
+                r.end = other.end;
+                return;
+            }
+            if r.contains(&other.start) {
+                r.end = r.end.max(other.end);
                 return;
             }
             if r.contains(&other.end) {
-                r.end = other.end;
-                return;
-            }
-            if r.start > other.start && r.end < other.end {
-                r.start = other.start;
-                r.end = other.end;
-                return;
-            }
-
-            if r.start < other.start && r.end > other.end {
+                r.start = r.start.min(other.start);
                 return;
             }
         }
         self.ranges.push(other.clone());
+    }
+
+    pub fn remove_overlaps(&mut self) {
+        let ranges = self.ranges.clone();
+        self.ranges = vec![];
+        for range in ranges {
+            self.add_range(&range);
+        }
+    }
+
+    pub fn count(&mut self) -> usize {
+        self.remove_overlaps();
+        self.ranges.iter().map(|r| r.end - r.start).sum::<isize>() as usize - self.beacons.len() + 1
     }
 }
 
@@ -119,30 +134,37 @@ impl From<&str> for Report {
 }
 
 impl Report {
-    pub fn mark(&self, row: isize, map: &mut HashMap<isize, HashMap<isize, Square>>) {
-        if self.closest_beacon.coord.y == row {
-            if let Some(row) = map.get_mut(&self.closest_beacon.coord.y) {
-                if let Some(_) = row.get(&self.closest_beacon.coord.x) {
-                    row.remove(&self.closest_beacon.coord.x);
-                }
-                row.insert(self.closest_beacon.coord.x, Square::Beacon);
-            }
-        }
+    pub fn mark(&self, row_num: isize, map: &mut HashMap<isize, Row>) {
         let distance = self.sensor.coord.distance(&self.closest_beacon.coord);
-        let max_x = distance - (row - self.sensor.coord.y).abs();
-        (-max_x..=max_x)
-            .map(|x| self.sensor.coord.add((x, row - self.sensor.coord.y)))
-            .for_each(|coord| {
-                if let Some(row) = map.get_mut(&coord.y) {
-                    if row.get(&coord.x).is_none() {
-                        row.insert(coord.x, Square::Nothing);
-                    }
-                } else {
-                    let mut row = HashMap::new();
-                    row.insert(coord.x, Square::Nothing);
-                    map.insert(coord.y, row);
+        let max_x = distance - (row_num - self.sensor.coord.y).abs();
+        if max_x <= 0 {
+            return;
+        }
+        let range = SignalRange {
+            start: self.sensor.coord.x - max_x,
+            end: self.sensor.coord.x + max_x,
+        };
+
+        dbg!(&range);
+
+        match map.get_mut(&row_num) {
+            Some(row) => {
+                row.add_range(&range);
+                if row_num == self.closest_beacon.coord.y {
+                    row.beacons.insert(self.closest_beacon.coord.x);
                 }
-            });
+            }
+            None => {
+                let mut row = Row {
+                    beacons: HashSet::new(),
+                    ranges: vec![range],
+                };
+                if row_num == self.closest_beacon.coord.y {
+                    row.beacons.insert(self.closest_beacon.coord.x);
+                }
+                map.insert(row_num, row);
+            }
+        };
     }
 }
 
@@ -163,46 +185,7 @@ fn main() {
         report.mark(row, &mut map);
     });
 
-    // let y_range: (isize, isize) = map
-    //     .keys()
-    //     .minmax()
-    //     .into_option()
-    //     .map(|x| (x.0.clone(), x.1.clone()))
-    //     .unwrap();
-
-    // let x_range: (isize, isize) = map
-    //     .values()
-    //     .map(|x| x.keys().minmax())
-    //     .map(|x| x.into_option().unwrap())
-    //     .fold((0 as isize, 0 as isize), |x, z| {
-    //         (x.0.min(z.0.clone()), x.1.max(z.1.clone()))
-    //     });
-    // dbg!(&x_range, &y_range);
-
-    // (y_range.0..=y_range.1).for_each(|y| {
-    //     (x_range.0..=x_range.1).for_each(|x| match map.get(&y) {
-    //         Some(row) => match row.get(&x) {
-    //             Some(square) => match square {
-    //                 Square::Beacon => print!("B"),
-    //                 Square::Nothing => print!("#"),
-    //             },
-    //             None => print!("."),
-    //         },
-    //         None => print!("."),
-    //     });
-    //     print!("\n");
-    // });
-    // print!("\n");
-
-    dbg!(map
-        .get(&row)
-        .unwrap()
-        .values()
-        .cloned()
-        .filter(|elt| {
-            return elt.clone() == Square::Nothing;
-        })
-        .count());
+    dbg!(map.get_mut(&row).unwrap().count());
 }
 
 #[cfg(test)]
@@ -230,16 +213,6 @@ mod test {
             let report: Report = line.into();
             report.mark(row, &mut map);
         });
-        assert_eq!(
-            map.get(&row)
-                .unwrap()
-                .values()
-                .cloned()
-                .filter(|elt| {
-                    return elt.clone() == Square::Nothing;
-                })
-                .count(),
-            26
-        );
+        assert_eq!(map.get_mut(&row).unwrap().count(), 26);
     }
 }
