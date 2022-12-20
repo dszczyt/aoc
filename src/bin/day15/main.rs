@@ -74,6 +74,12 @@ impl Row {
                 r.end = other.end;
                 return;
             }
+
+            if r.end + 1 == other.start {
+                r.end = other.end;
+                return;
+            }
+
             if r.contains(&other.start) {
                 r.end = r.end.max(other.end);
                 return;
@@ -145,7 +151,7 @@ impl Report {
             end: self.sensor.coord.x + max_x,
         };
 
-        dbg!(&range);
+        // dbg!(&range);
 
         match map.get_mut(&row_num) {
             Some(row) => {
@@ -162,6 +168,33 @@ impl Report {
                 if row_num == self.closest_beacon.coord.y {
                     row.beacons.insert(self.closest_beacon.coord.x);
                 }
+                map.insert(row_num, row);
+            }
+        };
+    }
+
+    pub fn mark2(&self, row_num: isize, map: &mut HashMap<isize, Row>, min: isize, max: isize) {
+        let distance = self.sensor.coord.distance(&self.closest_beacon.coord);
+        let max_x = distance - (row_num - self.sensor.coord.y).abs();
+        if max_x <= 0 {
+            return;
+        }
+        let range = SignalRange {
+            start: min.max(self.sensor.coord.x - max_x),
+            end: max.min(self.sensor.coord.x + max_x),
+        };
+
+        // dbg!(&range);
+
+        match map.get_mut(&row_num) {
+            Some(row) => {
+                row.add_range(&range);
+            }
+            None => {
+                let row = Row {
+                    beacons: HashSet::new(),
+                    ranges: vec![range],
+                };
                 map.insert(row_num, row);
             }
         };
@@ -186,13 +219,32 @@ fn main() {
     });
 
     dbg!(map.get_mut(&row).unwrap().count());
+
+    let mut map = HashMap::new();
+    input.lines().for_each(|line| {
+        let report: Report = line.into();
+        for row in 0..=4000000 {
+            report.mark2(row, &mut map, 0, 4000000);
+        }
+    });
+    for row in 0..=4000000 {
+        if let Some(current_row) = map.get_mut(&row) {
+            current_row.remove_overlaps();
+            let ranges = &current_row.ranges;
+            if ranges.len() > 1 {
+                let x = ranges.get(0).unwrap().end + 1;
+                dbg!(x * 4000000 + row);
+                return;
+            }
+        }
+    }
 }
 
 #[cfg(test)]
 mod test {
-    use std::collections::HashMap;
+    use std::{collections::HashMap, thread::current};
 
-    use crate::{Report, Square};
+    use crate::{Report, Row, Square};
 
     #[test]
     fn test_report() {
@@ -204,7 +256,7 @@ mod test {
     }
 
     #[test]
-    fn test_example1() {
+    fn example1() {
         let row = 10;
 
         let input = include_str!("example");
@@ -214,5 +266,29 @@ mod test {
             report.mark(row, &mut map);
         });
         assert_eq!(map.get_mut(&row).unwrap().count(), 26);
+    }
+    #[test]
+    fn example2() {
+        // let row = 10;
+
+        let input = include_str!("example");
+        let mut map = HashMap::new();
+        input.lines().for_each(|line| {
+            let report: Report = line.into();
+            for row in 0..=20 {
+                report.mark2(row, &mut map, 0, 20);
+            }
+        });
+        for row in 0..=20 {
+            if let Some(current_row) = map.get_mut(&row) {
+                current_row.remove_overlaps();
+                dbg!(&current_row);
+                let ranges = &current_row.ranges;
+                if ranges.len() > 1 {
+                    let x = ranges.get(0).unwrap().end + 1;
+                    assert_eq!(x * 4000000 + row, 56000011);
+                }
+            }
+        }
     }
 }
